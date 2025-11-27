@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from auctions.models import AuctionSession
 from finance.models import Deposit
 from decimal import Decimal
-
+from django.views.decorators.cache import never_cache  # <--- 1. 引入这个装饰器
 
 def index(request):
     """
@@ -17,11 +17,26 @@ def index(request):
     return render(request, 'index.html')
 
 
+@never_cache  # <--- 2. 加上这个，告诉浏览器：别存这个页面，每次都要来问我！
 def login_page(request):
+    """
+    登录页面视图
+    修复：如果用户已登录，访问此页面直接跳转回首页，防止出现“已登录还能看登录框”的尴尬
+    """
+    if request.user.is_authenticated:
+        return redirect('/')  # 或者 redirect('index')
+
     return render(request, 'login.html')
 
 
 def register_page(request):
+    """
+    注册页面视图
+    修复：已登录用户不需要注册，直接跳回首页
+    """
+    if request.user.is_authenticated:
+        return redirect('/')
+
     return render(request, 'register.html')
 
 
