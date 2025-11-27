@@ -100,5 +100,3 @@ class FinanceViewSet(viewsets.ReadOnlyModelViewSet):
             trans_type='topup', remark="系统测试充值"
         )
         return Response({"message": f"充值成功，当前余额: {request.user.balance}"})
-
-
