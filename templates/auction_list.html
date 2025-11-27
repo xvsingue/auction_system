@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}拍卖大厅{% endblock %}
+
+{% block content %}
+    <div id="auction-list-app" v-cloak>
+        <div class="row mb-4 align-items-center">
+            <div class="col-md-4">
+                <h2><i class="fas fa-gavel"></i> 拍卖大厅</h2>
+                <p class="text-muted">实时竞价，捡漏好物</p>
+            </div>
+            <div class="col-md-8 text-end">
+                <div class="btn-group me-3">
+                    <button class="btn btn-outline-primary" :class="{active: filterType===''}" @click="filterType=''">
+                        全部类型
+                    </button>
+                    <button class="btn btn-outline-primary" :class="{active: filterType==='increase'}"
+                            @click="filterType='increase'">增价拍
+                    </button>
+                    <button class="btn btn-outline-primary" :class="{active: filterType==='decrease'}"
+                            @click="filterType='decrease'">减价拍
+                    </button>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-outline-secondary" :class="{active: filterStatus===''}" @click="filterStatus=''">
+                        所有状态
+                    </button>
+                    <button class="btn btn-outline-secondary" :class="{active: filterStatus===1}" @click="filterStatus=1">
+                        进行中
+                    </button>
+                    <button class="btn btn-outline-secondary" :class="{active: filterStatus===0}" @click="filterStatus=0">
+                        未开始
+                    </button>
+                    <button class="btn btn-outline-secondary" :class="{active: filterStatus===2}" @click="filterStatus=2">
+                        已结束
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-4" v-for="session in filteredSessions" :key="session.id">
+                <div class="card h-100 shadow border-0">
+                    <div class="position-absolute top-0 end-0 m-2">
+                        <span class="badge bg-danger" v-if="session.auction_type==='decrease'">减价拍</span>
+                        <span class="badge bg-primary" v-else>增价拍</span>
+                    </div>
+
+                    <img :src="fixImageUrl(session.item_detail.images[0])" class="card-img-top" alt="...">
+
+                    <div class="card-body">
+                        <h5 class="card-title text-truncate">[[ session.name ]]</h5>
+                        <p class="card-text small text-muted">
+                            拍品: [[ session.item_detail.name ]]
+                        </p>
+
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div>
+                                <small class="text-muted d-block">当前价格</small>
+                                <span class="h4 text-danger fw-bold">¥ [[ session.current_price ]]</span>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted d-block">状态</small>
+                                <span class="badge"
+                                      :class="{
+                                           'bg-warning text-dark': session.status===0,
+                                           'bg-success': session.status===1,
+                                           'bg-secondary': session.status>=2
+                                      }">
+                                   [[ session.status_text ]]
+                               </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white pt-0 border-top-0">
+                        <hr>
+                        <div class="d-flex justify-content-between small text-muted mb-2">
+                            <span><i class="far fa-clock"></i> 开始: [[ formatDate(session.start_time) ]]</span>
+                        </div>
+                        <a :href="'/auction/' + session.id" class="btn btn-primary w-100 mt-2">
+                            <span v-if="session.status===1">立即参与</span>
+                            <span v-else>查看详情</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="filteredSessions.length === 0" class="text-center py-5">
+            <h4 class="text-muted">暂无相关场次</h4>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        new Vue({
+            el: '#auction-list-app',
+            delimiters: ['[[', ']]'],
+            mixins: [commonMixin],
+            data: {
+                sessions: [],
+                filterType: '',
+                filterStatus: '' // 新增状态变量，空字符串表示全部
+            },
+            computed: {
+                filteredSessions() {
+                    // 双重过滤逻辑
+                    return this.sessions.filter(s => {
+                        const matchType = this.filterType === '' || s.auction_type === this.filterType;
+                        const matchStatus = this.filterStatus === '' || s.status === this.filterStatus;
+                        return matchType && matchStatus;
+                    });
+                }
+            },
+            mounted() {
+                this.fetchSessions();
+            },
+            methods: {
+                fetchSessions() {
+                    // 获取所有拍卖场次
+                    axios.get('auctions/').then(res => {
+                        this.sessions = res.data.results || res.data;
+                    });
+                }
+            }
+        });
+    </script>
+{% endblock %}

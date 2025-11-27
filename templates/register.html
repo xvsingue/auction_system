@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}用户注册{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4" id="register-app" v-cloak>
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white text-center py-3">
+                <h4 class="mb-0"><i class="fas fa-user-plus"></i> 新用户注册</h4>
+            </div>
+            <div class="card-body p-4">
+                
+                <div class="alert alert-danger" v-if="error">[[ error ]]</div>
+
+                <form @submit.prevent="handleRegister">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">用户名</label>
+                            <input type="text" class="form-control" v-model="form.username" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">电子邮箱</label>
+                            <input type="email" class="form-control" v-model="form.email" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">密码</label>
+                            <input type="password" class="form-control" v-model="form.password" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">确认密码</label>
+                            <input type="password" class="form-control" v-model="form.confirm_password" required>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">选择身份</label>
+                        <div class="d-flex gap-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" v-model="form.role" value="buyer" id="roleBuyer">
+                                <label class="form-check-label" for="roleBuyer">我是买家 (需实名)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" v-model="form.role" value="seller" id="roleSeller">
+                                <label class="form-check-label" for="roleSeller">我是卖家 (需执照)</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3" v-if="form.role === 'buyer'">
+                        <label class="form-label">身份证号码</label>
+                        <input type="text" class="form-control" v-model="form.id_card" placeholder="请输入18位身份证号">
+                    </div>
+
+                    <div class="mb-3" v-if="form.role === 'seller'">
+                        <label class="form-label">上传营业执照</label>
+                        <input type="file" class="form-control" @change="handleFileUpload" accept="image/*">
+                        <div class="form-text">支持 JPG, PNG 格式，大小不超过 2MB</div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-success btn-lg" :disabled="loading">
+                            <span v-if="loading" class="spinner-border spinner-border-sm"></span>
+                            <span v-else>提交注册</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    new Vue({
+        el: '#register-app',
+        delimiters: ['[[', ']]'],
+        data: {
+            form: {
+                username: '',
+                email: '',
+                password: '',
+                confirm_password: '',
+                role: 'buyer', // 默认买家
+                id_card: '',
+                business_license: null // 存储文件对象
+            },
+            error: null,
+            loading: false
+        },
+        methods: {
+            // 处理文件选择事件
+            handleFileUpload(event) {
+                this.form.business_license = event.target.files[0];
+            },
+            
+            handleRegister() {
+                // 简单的前端校验
+                if (this.form.password !== this.form.confirm_password) {
+                    this.error = "两次输入的密码不一致";
+                    return;
+                }
+
+                this.loading = true;
+                this.error = null;
+
+                // 构建 FormData 对象 (上传文件必须用这个)
+                let formData = new FormData();
+                formData.append('username', this.form.username);
+                formData.append('email', this.form.email);
+                formData.append('password', this.form.password);
+                formData.append('confirm_password', this.form.confirm_password);
+                formData.append('role', this.form.role);
+
+                if (this.form.role === 'buyer') {
+                    formData.append('id_card', this.form.id_card);
+                } else if (this.form.role === 'seller') {
+                    if (this.form.business_license) {
+                        formData.append('business_license', this.form.business_license);
+                    } else {
+                        this.error = "卖家必须上传营业执照";
+                        this.loading = false;
+                        return;
+                    }
+                }
+
+                // 发送请求
+                axios.post('/users/register/', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                })
+                .then(res => {
+                    alert("注册成功！请登录");
+                    window.location.href = '/login/';
+                })
+                .catch(err => {
+                    this.loading = false;
+                    if (err.response && err.response.data) {
+                        // 尝试提取 DRF 返回的错误信息
+                        let errorMsg = "";
+                        let data = err.response.data;
+                        if (typeof data === 'object') {
+                            for (let key in data) {
+                                errorMsg += `${data[key]} `; // 拼接错误
+                            }
+                        } else {
+                            errorMsg = "注册失败";
+                        }
+                        this.error = errorMsg;
+                    } else {
+                        this.error = "服务器错误";
+                    }
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}

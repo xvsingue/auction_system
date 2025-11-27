@@ -1,0 +1,63 @@
+{% extends "admin/base.html" %}
+
+{% block title %}拍卖系统后台管理{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link href="https://cdn.staticfile.org/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block branding %}
+    <h1 id="site-name">
+        <a href="/admin/">拍卖系统后台</a>
+    </h1>
+{% endblock %}
+
+{% block footer %}
+    {{ block.super }}
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // === 核心逻辑：动态插入按钮到面包屑栏 ===
+
+            // 1. 创建按钮元素
+            var btn = document.createElement("a");
+            btn.innerHTML = '<i class="fas fa-tachometer-alt me-1"></i> 返回仪表盘';
+            btn.href = "/dashboard/";
+
+            // 2. 设置样式 (仿 Django 原生风格)
+            // #447e9b 是 Django Admin 的次级蓝色，非常协调
+            btn.style.cssText = `
+                float: right;
+                background-color: #447e9b;
+                color: white;
+                padding: 6px 15px;
+                border-radius: 20px;
+                text-decoration: none;
+                font-size: 12px;
+                font-weight: bold;
+                margin-top: -4px; /* 微调垂直对齐 */
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                transition: all 0.2s;
+            `;
+
+            // 3. 鼠标悬停效果
+            btn.onmouseover = function() {
+                this.style.backgroundColor = '#305c72';
+                this.style.transform = 'translateY(-1px)';
+            };
+            btn.onmouseout = function() {
+                this.style.backgroundColor = '#447e9b';
+                this.style.transform = 'translateY(0)';
+            };
+
+            // 4. 找到页面上的面包屑容器 (.breadcrumbs)
+            var breadcrumbs = document.querySelector(".breadcrumbs");
+
+            // 5. 插入按钮
+            if (breadcrumbs) {
+                // 插入到面包屑容器的第一个位置，配合 float: right 就会跑到最右边
+                breadcrumbs.insertBefore(btn, breadcrumbs.firstChild);
+            }
+        });
+    </script>
+{% endblock %}

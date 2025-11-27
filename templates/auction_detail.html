@@ -1,0 +1,323 @@
+{% extends 'base.html' %}
+
+{% block title %}拍卖详情{% endblock %}
+
+{% block content %}
+    <div id="auction-detail-app" v-cloak>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">首页</a></li>
+                <li class="breadcrumb-item"><a href="/auctions/">拍卖大厅</a></li>
+                <li class="breadcrumb-item active">[[ session ? session.name : '加载中...' ]]</li>
+            </ol>
+        </nav>
+
+        <div v-if="!session" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">正在连接拍卖现场...</p>
+        </div>
+
+        <div class="row" v-else>
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm border-0">
+                    <div class="p-3 d-flex align-items-center justify-content-center bg-light" style="height: 400px;">
+                        <img :src="fixImageUrl(currentImage)" class="img-fluid"
+                             style="max-height: 100%; object-fit: contain;">
+                    </div>
+                    <div class="card-footer bg-white">
+                        <div class="d-flex gap-2 overflow-auto">
+                            <img v-for="(img, index) in session.item_detail.images"
+                                 :key="index"
+                                 :src="fixImageUrl(img)"
+                                 @click="currentImage = img"
+                                 class="img-thumbnail"
+                                 :class="{'border-primary': currentImage === img}"
+                                 style="width: 70px; height: 70px; object-fit: cover; cursor: pointer;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card shadow border-0 h-100">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <span class="badge bg-danger me-1" v-if="session.auction_type === 'decrease'">减价拍</span>
+                            <span class="badge bg-primary me-1" v-else>增价拍</span>
+                            <span class="badge"
+                                  :class="{'bg-success': session.status===1, 'bg-secondary': session.status!==1}">
+                            [[ session.status_text ]]
+                        </span>
+                        </div>
+                        <small class="text-muted">场次ID: [[ session.id ]]</small>
+                    </div>
+
+                    <div class="card-body">
+                        <h3 class="card-title fw-bold mb-3">[[ session.item_detail.name ]]</h3>
+
+                        <div class="alert text-center py-4 mb-4"
+                             :class="session.status===1 ? 'alert-primary' : 'alert-secondary'">
+                            <small class="text-uppercase mb-1 d-block">当前价格</small>
+                            <h1 class="display-4 fw-bold text-danger mb-0">
+                                ¥[[ session.current_price ]]
+                            </h1>
+
+                            <div v-if="session.auction_type === 'decrease' && session.status === 1"
+                                 class="mt-2 small text-muted">
+                                <i class="fas fa-clock"></i> 系统每 [[ session.reduce_interval ]] 秒自动降价
+                            </div>
+                        </div>
+
+                        <div v-if="session.status === 1" class="mb-4">
+
+                            <div v-if="session.auction_type === 'increase'">
+                                <label class="form-label fw-bold">出价金额 (最低: ¥[[ minBidPrice ]])</label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">¥</span>
+                                    <input type="number" class="form-control fw-bold" v-model="bidPrice"
+                                           :min="minBidPrice">
+                                    <button class="btn btn-danger px-4" @click="placeBid" :disabled="loading">
+                                        <span v-if="loading" class="spinner-border spinner-border-sm"></span>
+                                        <span v-else>立即出价</span>
+                                    </button>
+                                </div>
+                                <div class="form-text mt-2">
+                                    <i class="fas fa-info-circle"></i> 每次加价幅度: ¥[[ session.price_step ]]
+                                </div>
+                            </div>
+
+                            <div v-else>
+                                <div class="d-grid">
+                                    <button class="btn btn-danger btn-lg py-3 shadow-sm" @click="placeBid"
+                                            :disabled="loading">
+                                        <i class="fas fa-bolt"></i>
+                                        <span v-if="loading">抢拍中...</span>
+                                        <span v-else>立即以当前价抢拍</span>
+                                    </button>
+                                </div>
+                                <p class="text-center mt-2 text-danger small fw-bold">
+                                    ⚠️ 手慢无！价格随时可能变动或被他人抢走。
+                                </p>
+                            </div>
+                        </div>
+
+                        <div v-else-if="session.status === 0" class="alert alert-warning text-center py-4">
+                            <h4><i class="fas fa-hourglass-half"></i> 拍卖尚未开始</h4>
+                            <p class="mb-0 fs-5">
+                                <i class="far fa-clock"></i> 开拍时间: <strong>[[ formatDate(session.start_time)
+                                ]]</strong>
+                            </p>
+                            <p class="text-muted small mt-2">敬请期待</p>
+                        </div>
+
+                        <div v-else class="alert alert-secondary text-center py-4">
+                            <h4><i class="fas fa-gavel"></i> 拍卖已结束</h4>
+                            <p class="mb-0">最终成交价: <strong>¥[[ session.current_price ]]</strong></p>
+                        </div>
+
+                        <hr>
+
+                        <div class="row g-2 small text-muted">
+                            <div class="col-6">
+                                <span><i
+                                        class="far fa-calendar-alt"></i> 开始: [[ formatDate(session.start_time) ]]</span>
+                            </div>
+                            <div class="col-6">
+                                <span><i class="far fa-money-bill-alt"></i> 起拍: ¥[[ session.item_detail.start_price ]]</span>
+                            </div>
+                            <div class="col-6">
+                                <span><i class="fas fa-user-shield"></i> 保证金: ¥[[ calculateDeposit(session.item_detail) ]]</span>
+                            </div>
+                            <div class="col-6">
+                                <span><i class="fas fa-tag"></i> 分类: [[ session.item_detail.category_name ]]</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4" v-if="session">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white fw-bold">
+                        <i class="fas fa-list-ul"></i> 出价记录 (实时更新)
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover mb-0 text-center align-middle">
+                                <thead class="table-light">
+                                <tr>
+                                    <th>状态</th>
+                                    <th>竞买人</th>
+                                    <th>出价金额</th>
+                                    <th>出价时间</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr v-for="bid in bidHistory" :key="bid.id"
+                                    :class="{'table-success fw-bold': bid.is_leading}">
+                                    <td>
+                                        <span v-if="bid.is_leading" class="badge bg-danger">领先/成交</span>
+                                        <span v-else class="badge bg-secondary">出局</span>
+                                    </td>
+                                    <td>[[ bid.username ]]</td>
+                                    <td class="text-danger">¥[[ bid.bid_price ]]</td>
+                                    <td class="small text-muted">[[ formatDate(bid.bid_time) ]]</td>
+                                </tr>
+                                <tr v-if="bidHistory.length === 0">
+                                    <td colspan="4" class="py-4 text-muted">暂无出价记录，快来抢沙发！</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        new Vue({
+            el: '#auction-detail-app',
+            delimiters: ['[[', ']]'],
+            mixins: [commonMixin],
+            data: {
+                sessionId: {{ session_id }}, // Django 注入 ID
+                session: null,
+                bidHistory: [],
+                currentImage: '',
+                bidPrice: 0,
+                loading: false,
+                timer: null
+            },
+            computed: {
+                minBidPrice() {
+                    if (!this.session) return 0;
+                    // 计算最低合法出价：当前价 + 加价幅度
+                    let min = parseFloat(this.session.current_price) + parseFloat(this.session.price_step);
+                    return min.toFixed(2);
+                }
+            },
+            mounted() {
+                this.fetchDetail();
+                this.fetchHistory();
+
+                // === 核心逻辑：每2秒轮询一次 ===
+                this.timer = setInterval(() => {
+                    // 只有在页面有数据且拍卖进行中时才刷新
+                    if (this.session && this.session.status === 1) {
+                        this.refreshData();
+                    }
+                }, 2000);
+            },
+            beforeDestroy() {
+                // 离开页面销毁定时器，防止后台空转
+                clearInterval(this.timer);
+            },
+            methods: {
+                // 计算保证金显示
+                calculateDeposit(item) {
+                    return (parseFloat(item.start_price) * parseFloat(item.deposit_ratio) / 100).toFixed(2);
+                },
+
+                // 获取详情 (初次加载)
+                fetchDetail() {
+                    // 注意：这里没有 /api/ 前缀，app.js 会自动加
+                    axios.get('auctions/' + this.sessionId + '/').then(res => {
+                        this.session = res.data;
+                        // 初始化图片显示第一张
+                        if (this.session.item_detail.images.length > 0) {
+                            this.currentImage = this.session.item_detail.images[0];
+                        }
+                        // 初始化出价输入框
+                        this.bidPrice = this.minBidPrice;
+                    }).catch(err => {
+                        alert("获取场次详情失败，可能场次不存在");
+                        window.location.href = '/auctions/';
+                    });
+                },
+
+                // 获取历史记录
+                fetchHistory() {
+                    axios.get('trades/bids/history/?session_id=' + this.sessionId).then(res => {
+                        this.bidHistory = res.data.results || res.data;
+                    });
+                },
+
+                // 静默刷新 (轮询用)
+                refreshData() {
+                    axios.get('auctions/' + this.sessionId + '/').then(res => {
+                        // 只更新关键变动数据，不重置整个对象，防止图片闪烁
+                        this.session.current_price = res.data.current_price;
+                        this.session.status = res.data.status;
+                        this.session.status_text = res.data.status_text;
+
+                        // 如果发现拍卖结束了，立马停止轮询
+                        if (this.session.status !== 1) {
+                            clearInterval(this.timer);
+                        }
+                    });
+                    this.fetchHistory();
+                },
+
+                // 核心交互：出价
+                placeBid() {
+                    this.loading = true;
+
+                    let priceToSubmit = 0;
+                    if (this.session.auction_type === 'increase') {
+                        priceToSubmit = this.bidPrice;
+                    } else {
+                        // 减价拍直接提交当前看到的系统价格
+                        priceToSubmit = this.session.current_price;
+                    }
+
+                    let payload = {
+                        session_id: this.sessionId,
+                        bid_price: priceToSubmit
+                    };
+
+                    axios.post('trades/bids/place_bid/', payload).then(res => {
+                        alert("🎉 " + res.data.message);
+                        this.refreshData(); // 立即刷新界面
+                        this.bidPrice = this.minBidPrice; // 重置输入框到下一个档位
+                        this.loading = false;
+                    }).catch(err => {
+                        this.loading = false;
+                        let msg = "出价失败";
+
+                        if (err.response && err.response.data) {
+                            let data = err.response.data;
+
+                            // 1. 优先提取 DRF 通用错误 (non_field_errors)
+                            if (data.non_field_errors && Array.isArray(data.non_field_errors)) {
+                                msg = data.non_field_errors[0];
+                            }
+                            // 2. 提取详情错误 (detail)
+                            else if (data.detail) {
+                                msg = data.detail;
+                            }
+                            // 3. 兜底：如果是其他字段错误，尝试提取第一个
+                            else if (typeof data === 'object') {
+                                // 取出第一个 value 的第一条信息
+                                let keys = Object.keys(data);
+                                if (keys.length > 0) {
+                                    let firstError = data[keys[0]];
+                                    msg = Array.isArray(firstError) ? firstError[0] : firstError;
+                                } else {
+                                    msg = JSON.stringify(data);
+                                }
+                            } else {
+                                msg = data;
+                            }
+                        }
+                        alert("❌ " + msg);
+                    });
+                }
+            }
+        });
+    </script>
+{% endblock %}

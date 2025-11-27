@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}收银台{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5" id="pay-app" v-cloak>
+    <div class="col-md-5">
+        <div class="card shadow-lg border-0">
+            <div class="card-header bg-primary text-white text-center py-3">
+                <h5 class="mb-0"><i class="fas fa-wallet"></i> 订单支付</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <p class="text-muted mb-1">支付金额</p>
+                    <h1 class="text-danger fw-bold">¥ [[ order.final_price ]]</h1>
+                    <p class="badge bg-light text-dark border">订单号: [[ orderNo ]]</p>
+                </div>
+
+                <form @submit.prevent="confirmPay">
+                    <div class="mb-3">
+                        <label class="form-label">支付密码</label>
+                        <input type="password" class="form-control form-control-lg text-center" 
+                               v-model="password" placeholder="请输入登录密码作为支付验证" required>
+                        <div class="form-text text-center">为了毕设演示方便，支付密码 = 登录密码</div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-success btn-lg" :disabled="loading">
+                            <span v-if="loading" class="spinner-border spinner-border-sm"></span>
+                            <span v-else>确认支付</span>
+                        </button>
+                        <a href="/my-orders/" class="btn btn-link text-muted">稍后再付</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    new Vue({
+        el: '#pay-app',
+        delimiters: ['[[', ']]'],
+        data: {
+            orderNo: '{{ order_no }}',
+            order: { final_price: '0.00' },
+            password: '',
+            loading: false
+        },
+        mounted() {
+            this.fetchOrderInfo();
+        },
+        methods: {
+            fetchOrderInfo() {
+                // 注意：这里加了 /api/ 前缀（因为我们把 base.html 改了，这里要由 app.js 自动处理，
+                // 但为了稳妥，建议用 axios.get('trades/orders/') 配合 app.js 的 defaults）
+                axios.get('trades/orders/').then(res => {
+                    let list = res.data.results || res.data;
+                    let target = list.find(o => o.order_no === this.orderNo);
+                    if (target) this.order = target;
+                }).catch(err => {
+                    console.error("订单信息加载失败", err);
+                });
+            },
+            confirmPay() {
+                this.loading = true;
+
+                // 发送支付请求
+                axios.post('finance/pay_order/', {
+                    order_no: this.orderNo,
+                    pay_password: this.password
+                }).then(res => {
+                    alert("🎉 支付成功！");
+                    window.location.href = '/my-orders/';
+                }).catch(err => {
+                    this.loading = false;
+                    console.error(err);
+
+                    // === 核心修改：智能提取错误信息 ===
+                    let msg = "支付失败";
+
+                    if (err.response && err.response.data) {
+                        let data = err.response.data;
+
+                        // 1. 优先看后端自定义的 "error" 字段
+                        if (data.error) {
+                            msg = data.error;
+                        }
+                        // 2. 其次看 DRF 默认的 "detail" 字段
+                        else if (data.detail) {
+                            msg = data.detail;
+                        }
+                        // 3. 如果是字段校验错误（如密码为空），转成字符串显示
+                        else {
+                            msg = JSON.stringify(data);
+                        }
+                    }
+
+                    alert("❌ " + msg);
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}

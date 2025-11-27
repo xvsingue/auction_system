@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}我的拍品{% endblock %}
+
+{% block content %}
+<div id="my-items-app" v-cloak>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3><i class="fas fa-boxes"></i> 我的拍品库存</h3>
+        <a href="/create-item/" class="btn btn-success"><i class="fas fa-plus"></i> 发布新拍品</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>图片</th>
+                        <th>名称</th>
+                        <th>分类</th>
+                        <th>起拍价</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="item in items" :key="item.id">
+                        <td>
+                            <img :src="fixImageUrl(item.images[0])" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">
+                        </td>
+                        <td class="fw-bold">[[ item.name ]]</td>
+                        <td>[[ item.category_name ]]</td>
+                        <td>¥[[ item.start_price ]]</td>
+                        <td>
+                            <span class="badge bg-warning text-dark" v-if="item.status === 0">待审核</span>
+                            <span class="badge bg-info" v-if="item.status === 1">待开拍</span>
+                            <span class="badge bg-danger" v-if="item.status === 2">竞拍中</span>
+                            <span class="badge bg-success" v-if="item.status === 3">已成交</span>
+                            <span class="badge bg-secondary" v-if="item.status === 4">流拍</span>
+                            
+                            <div v-if="item.reject_reason" class="text-danger small mt-1">
+                                驳回: [[ item.reject_reason ]]
+                            </div>
+                        </td>
+                        <td class="text-muted small">[[ formatDate(item.create_time) ]]</td>
+                    </tr>
+                    <tr v-if="items.length === 0">
+                        <td colspan="6" class="text-center py-4 text-muted">暂无数据</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    new Vue({
+        el: '#my-items-app',
+        delimiters: ['[[', ']]'],
+        mixins: [commonMixin],
+        data: {
+            items: []
+        },
+        mounted() {
+            this.fetchMyItems();
+        },
+        methods: {
+            fetchMyItems() {
+                // 调用我们在 items/views.py 中写的自定义 action
+                axios.get('/items/my_items/').then(res => {
+                    this.items = res.data;
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}

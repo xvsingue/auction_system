@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+
+{% block title %}个人中心{% endblock %}
+
+{% block content %}
+<div id="profile-app" v-cloak>
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-0 text-center h-100">
+                <div class="card-body py-5">
+                    <div class="mb-3">
+                        <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; font-size: 32px;">
+                            [[ user.username ? user.username[0].toUpperCase() : 'U' ]]
+                        </div>
+                    </div>
+                    <h4 class="card-title">[[ user.username ]]</h4>
+                    <p class="text-muted mb-4">[[ user.role_display ]]</p>
+                    
+                    <div class="d-grid gap-2 px-4">
+                        <button class="btn btn-outline-primary" @click="openInfoModal">
+                            <i class="fas fa-id-card"></i> 基本资料
+                        </button>
+                        <button class="btn btn-outline-secondary" @click="openPwdModal">
+                            <i class="fas fa-key"></i> 修改密码
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0 mb-4 bg-primary text-white bg-gradient">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="opacity-75 mb-1">账户余额</h6>
+                            <h2 class="display-5 fw-bold mb-0">¥ [[ user.balance ]]</h2>
+                        </div>
+                        <div class="text-end">
+                            <button class="btn btn-light text-primary fw-bold btn-lg shadow" @click="handleTopUp" :disabled="loading">
+                                <i class="fas fa-plus-circle"></i> 模拟充值 (+1万)
+                            </button>
+                            <div class="mt-2 small opacity-75">毕设专用模拟接口</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h6 class="mb-0 fw-bold"><i class="fas fa-list-ul text-secondary"></i> 资金变动记录</h6>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>时间</th>
+                                <th>类型</th>
+                                <th>金额</th>
+                                <th>备注</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="trans in transactions" :key="trans.id">
+                                <td class="small text-muted">[[ formatDate(trans.create_time) ]]</td>
+                                <td>[[ getTypeText(trans.trans_type) ]]</td>
+                                <td :class="parseFloat(trans.amount) > 0 ? 'text-success fw-bold' : 'text-danger fw-bold'">
+                                    [[ parseFloat(trans.amount) > 0 ? '+' : '' ]][[ trans.amount ]]
+                                </td>
+                                <td class="small text-muted">[[ trans.remark ]]</td>
+                            </tr>
+                            <tr v-if="transactions.length === 0">
+                                <td colspan="4" class="text-center py-4 text-muted">暂无资金记录</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="infoModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title"><i class="fas fa-user-edit text-primary"></i> 编辑个人档案</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">用户名 (不可改)</label>
+                                <input type="text" class="form-control bg-light" :value="user.username" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">当前身份</label>
+                                <input type="text" class="form-control bg-light" :value="user.role_display" readonly>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">信用评分</label>
+                            <div class="progress" style="height: 25px;">
+                                <div class="progress-bar bg-success" role="progressbar"
+                                     :style="'width: ' + (user.credit_rating * 20) + '%'">
+                                     [[ user.credit_rating ]] 分
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">电子邮箱</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                <input type="email" class="form-control" v-model="editForm.email">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">身份证号 (实名认证)</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-id-card"></i></span>
+                                <input type="text" class="form-control" v-model="editForm.id_card" placeholder="请输入身份证号">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-link text-muted text-decoration-none" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary px-4" @click="submitInfo">
+                        <i class="fas fa-save"></i> 保存更改
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="pwdModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">修改密码</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">当前密码</label>
+                        <input type="password" class="form-control" v-model="pwdForm.old_password">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">新密码</label>
+                        <input type="password" class="form-control" v-model="pwdForm.new_password">
+                        <div class="form-text">至少6位字符</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-danger" @click="submitPwd">确认修改</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    new Vue({
+        el: '#profile-app',
+        delimiters: ['[[', ']]'],
+        mixins: [commonMixin],
+        data: {
+            user: { username: '', balance: '0.00', role_display: '', email: '', id_card: '', credit_rating: 5.0 },
+            transactions: [],
+            loading: false,
+            // 编辑表单数据
+            editForm: { email: '', id_card: '' },
+            pwdForm: { old_password: '', new_password: '' },
+            // 模态框实例
+            infoModalInstance: null,
+            pwdModalInstance: null
+        },
+        mounted() {
+            this.fetchData();
+            // 初始化 Bootstrap 模态框
+            this.infoModalInstance = new bootstrap.Modal(document.getElementById('infoModal'));
+            this.pwdModalInstance = new bootstrap.Modal(document.getElementById('pwdModal'));
+        },
+        methods: {
+            fetchData() {
+                axios.get('users/me/').then(res => {
+                    this.user = res.data;
+                    const roleMap = {'admin': '管理员', 'seller': '卖家', 'buyer': '买家'};
+                    this.user.role_display = roleMap[this.user.role];
+                });
+                axios.get('finance/').then(res => {
+                    this.transactions = res.data.results || res.data;
+                });
+            },
+            handleTopUp() {
+                this.loading = true;
+                axios.post('finance/top_up/', { amount: 10000 }).then(res => {
+                    alert("🎉 充值成功！");
+                    this.fetchData();
+                    this.loading = false;
+                }).catch(err => {
+                    this.loading = false;
+                    alert("充值失败");
+                });
+            },
+            getTypeText(type) {
+                const map = {
+                    'topup': '充值', 'payment': '支付',
+                    'income': '收入', 'refund': '退款', 'service_fee': '服务费'
+                };
+                return map[type] || type;
+            },
+
+            // === 修改资料逻辑 ===
+            openInfoModal() {
+                // 打开时回填数据
+                this.editForm.email = this.user.email;
+                this.editForm.id_card = this.user.id_card;
+                this.infoModalInstance.show();
+            },
+            submitInfo() {
+                axios.patch('users/me/', this.editForm).then(res => {
+                    alert("资料修改成功！");
+                    // 成功后局部更新页面数据
+                    this.user.email = this.editForm.email;
+                    this.user.id_card = this.editForm.id_card;
+                    this.infoModalInstance.hide();
+                }).catch(err => {
+                    console.error(err);
+                    alert("修改失败，请检查输入格式");
+                });
+            },
+
+            // === 修改密码逻辑 ===
+            openPwdModal() {
+                this.pwdForm.old_password = '';
+                this.pwdForm.new_password = '';
+                this.pwdModalInstance.show();
+            },
+            submitPwd() {
+                if (!this.pwdForm.old_password || !this.pwdForm.new_password) {
+                    alert("请填写完整");
+                    return;
+                }
+                axios.post('users/change_password/', this.pwdForm).then(res => {
+                    alert("✅ 密码修改成功！");
+                    this.pwdModalInstance.hide();
+                }).catch(err => {
+                    let msg = "修改失败";
+                    if(err.response && err.response.data && err.response.data.error) {
+                        msg = err.response.data.error;
+                    }
+                    alert("❌ " + msg);
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}

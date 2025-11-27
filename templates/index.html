@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}首页 - 线上拍卖系统{% endblock %}
+
+{% block content %}
+<div id="home-app" v-cloak>
+    <div class="p-5 mb-4 bg-light rounded-3 shadow-sm text-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <div class="container-fluid py-3">
+            <h1 class="display-5 fw-bold">好物在线竞拍</h1>
+            <p class="col-md-8 fs-4 mx-auto">实时竞价 · 公平公正 · 捡漏必备</p>
+            <a href="/auctions/" class="btn btn-warning btn-lg fw-bold mt-2">
+                <i class="fas fa-gavel"></i> 前往拍卖大厅
+            </a>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center">
+            <h3 class="mb-0 me-4"><i class="fas fa-fire text-danger"></i> 正在热拍</h3>
+
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary rounded-pill px-3 me-2"
+                        :class="{active: filterStatus===1, 'bg-danger text-white border-danger': filterStatus===1}"
+                        @click="filterStatus=1">进行中</button>
+                <button class="btn btn-outline-secondary rounded-pill px-3"
+                        :class="{active: filterStatus===0, 'bg-primary text-white border-primary': filterStatus===0}"
+                        @click="filterStatus=0">预告</button>
+            </div>
+        </div>
+        <a href="/auctions/" class="text-decoration-none">查看全部 ></a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3 mb-4" v-for="session in sessions" :key="session.id">
+            <div class="card h-100 shadow-sm hover-shadow transition">
+                <div class="position-absolute top-0 end-0 m-2">
+                    <span class="badge bg-danger" v-if="session.auction_type==='decrease'">减价拍</span>
+                    <span class="badge bg-primary" v-else>增价拍</span>
+                </div>
+
+                <img :src="fixImageUrl(session.item_detail.images[0])" class="card-img-top" style="height: 200px; object-fit: cover;">
+
+                <div class="card-body">
+                    <h5 class="card-title text-truncate">[[ session.name ]]</h5>
+                    <p class="text-muted small mb-2">[[ session.item_detail.name ]]</p>
+
+                    <div class="d-flex justify-content-between align-items-end">
+                        <div>
+                            <small class="text-muted">当前价</small>
+                            <div class="text-danger fw-bold fs-5">¥[[ session.current_price ]]</div>
+                        </div>
+                        <span class="badge"
+                              :class="{
+                                  'bg-warning text-dark': session.status===0,
+                                  'bg-success': session.status===1,
+                                  'bg-secondary': session.status>=2
+                              }">
+                            [[ session.status_text ]]
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card-footer bg-white border-top-0 pb-3">
+                    <a :href="'/auction/' + session.id" class="btn btn-outline-primary w-100">
+                        <span v-if="session.status===1">立即参与</span>
+                        <span v-else>查看详情</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="sessions.length === 0" class="col-12 text-center py-5 text-muted">
+            <i class="fas fa-box-open fa-3x mb-3"></i>
+            <p v-if="filterStatus===1">暂无正在进行的拍卖，看看预告吧</p>
+            <p v-else>暂无即将开始的拍卖</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-shadow:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; transform: translateY(-2px); }
+    .transition { transition: all 0.3s; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    new Vue({
+        el: '#home-app',
+        delimiters: ['[[', ']]'],
+        mixins: [commonMixin],
+        data: {
+            allSessions: [], // 存储接口返回的全部数据
+            sessions: [],    // 存储当前展示的数据
+            filterStatus: 1  // 默认看进行中
+        },
+        watch: {
+            // 监听状态变化，自动重新过滤
+            filterStatus() {
+                this.applyFilter();
+            }
+        },
+        mounted() {
+            this.fetchSessions();
+        },
+        methods: {
+            fetchSessions() {
+                axios.get('auctions/').then(res => {
+                    this.allSessions = res.data.results || res.data;
+                    this.applyFilter();
+                });
+            },
+            applyFilter() {
+                // 前端简单过滤
+                let filtered = this.allSessions.filter(s => s.status === this.filterStatus);
+
+                // 首页逻辑：
+                // 1. 如果选了“进行中”但没有数据，为了不难看，兜底显示所有数据的前4个
+                // 2. 否则正常显示过滤后的前4个
+                if (this.filterStatus === 1 && filtered.length === 0) {
+                    this.sessions = this.allSessions.slice(0, 4);
+                } else {
+                    this.sessions = filtered.slice(0, 4);
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,209 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>综合管理指挥舱 - 拍卖系统</title>
+
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        body { background-color: #f0f2f5; font-family: "Segoe UI", sans-serif; height: 100vh; overflow: hidden; }
+        [v-cloak] { display: none !important; }
+
+        /* 顶部导航 */
+        .admin-header { background: #2c3e50; color: white; height: 60px; flex-shrink: 0; z-index: 1000; }
+        .layout-container { display: flex; height: calc(100vh - 60px); }
+
+        /* 侧边栏 */
+        .sidebar { width: 280px; background: #fff; border-right: 1px solid #e0e0e0; overflow-y: auto; flex-shrink: 0; padding: 20px; display: flex; flex-direction: column; }
+        .sidebar::-webkit-scrollbar { width: 5px; }
+
+        /* 主区域 */
+        .main-content { flex-grow: 1; padding: 30px; overflow-y: auto; background-color: #f4f6f9; }
+
+        /* 菜单与卡片 */
+        .menu-item { display: flex; align-items: center; padding: 12px 15px; margin-bottom: 10px; background: #f8f9fa; border-radius: 8px; text-decoration: none; color: #495057; transition: all 0.2s; }
+        .menu-item:hover { background: #e9ecef; color: #0d6efd; transform: translateX(5px); }
+        .menu-item i { width: 30px; text-align: center; font-size: 1.2rem; margin-right: 10px; }
+        .metric-card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: transform 0.3s; }
+        .metric-card:hover { transform: translateY(-5px); }
+        .chart-card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); height: 100%; }
+    </style>
+</head>
+<body>
+
+<div id="dashboard-app" v-cloak>
+    <nav class="navbar admin-header px-4">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-gavel fa-lg me-2 text-warning"></i>
+            <span class="fw-bold fs-5">拍卖系统管理台</span>
+        </div>
+        <div class="d-flex align-items-center">
+            <span class="me-3 small opacity-75">[[ currentDate ]]</span>
+            <div class="dropdown">
+                <a class="text-white text-decoration-none dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-user-shield me-1"></i> [[ user ? user.username : '管理员' ]]
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow">
+                    <li><a class="dropdown-item text-danger" href="#" onclick="document.getElementById('logout-form').submit();"><i class="fas fa-sign-out-alt"></i> 退出系统</a></li>
+                </ul>
+            </div>
+            <form id="logout-form" action="/api/users/logout/" method="POST" style="display: none;">{% csrf_token %}</form>
+        </div>
+    </nav>
+
+    <div class="layout-container">
+        <div class="sidebar shadow-sm">
+            <div class="text-muted small fw-bold text-uppercase mb-3 ps-2">业务管理</div>
+            <a href="/admin/items/auctionitem/" class="menu-item"><i class="fas fa-gavel text-primary"></i><span class="fw-bold">拍品审核</span></a>
+            <a href="/admin/auctions/auctionsession/" class="menu-item"><i class="far fa-calendar-alt text-success"></i><span class="fw-bold">拍卖排期</span></a>
+            <a href="/admin/trades/auctionorder/" class="menu-item"><i class="fas fa-file-invoice-dollar text-warning"></i><span class="fw-bold">订单管理</span></a>
+            <a href="/admin/items/itemcategory/" class="menu-item"><i class="fas fa-tags text-info"></i><span class="fw-bold">分类管理</span></a>
+
+            <div class="text-muted small fw-bold text-uppercase mb-3 mt-4 ps-2">系统维护</div>
+            <a href="/admin/users/userprofile/" class="menu-item"><i class="fas fa-users-cog" style="color: #6f42c1;"></i><span class="fw-bold">用户管理</span></a>
+            <a href="/admin/finance/transactionrecord/" class="menu-item"><i class="fas fa-chart-line text-danger"></i><span class="fw-bold">资金流水</span></a>
+            <a href="/admin/django_celery_beat/periodictask/" class="menu-item"><i class="fas fa-clock text-secondary"></i><span class="fw-bold">定时任务</span></a>
+            <a href="/admin/" class="menu-item"><i class="fas fa-server text-dark"></i><span class="fw-bold">完整后台</span></a>
+        </div>
+
+        <div class="main-content">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold text-dark m-0"><i class="fas fa-chart-pie text-secondary me-2"></i> 数据监控大屏</h4>
+                <span class="badge bg-primary">实时更新</span>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-md-4">
+                    <div class="card metric-card bg-primary text-white h-100">
+                        <div class="card-body d-flex justify-content-between align-items-center p-4">
+                            <div><h6 class="opacity-75">注册用户</h6><h2 class="fw-bold mb-0">[[ stats.users ]]</h2></div>
+                            <i class="fas fa-users fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card metric-card bg-success text-white h-100">
+                        <div class="card-body d-flex justify-content-between align-items-center p-4">
+                            <div><h6 class="opacity-75">拍品库存</h6><h2 class="fw-bold mb-0">[[ stats.items ]]</h2></div>
+                            <i class="fas fa-box-open fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card metric-card bg-warning text-white h-100">
+                        <div class="card-body d-flex justify-content-between align-items-center p-4">
+                            <div><h6 class="text-dark opacity-75">累计成交 (¥)</h6><h2 class="fw-bold mb-0 text-dark">[[ stats.volume ]]</h2></div>
+                            <i class="fas fa-coins fa-3x opacity-50 text-dark"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card chart-card">
+                        <div class="card-header bg-white border-0 pt-3 ps-3"><h6 class="fw-bold text-secondary">拍品分类占比</h6></div>
+                        <div class="card-body"><div id="categoryChart" style="width: 100%; height: 350px;"></div></div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card chart-card">
+                        <div class="card-header bg-white border-0 pt-3 ps-3"><h6 class="fw-bold text-secondary">近期交易趋势</h6></div>
+                        <div class="card-body"><div id="trendChart" style="width: 100%; height: 350px;"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'js/jquery.min.js' %}"></script>
+<script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'js/vue.min.js' %}"></script>
+<script src="{% static 'js/axios.min.js' %}"></script>
+<script src="{% static 'js/echarts.min.js' %}"></script>
+<script src="{% static 'js/app.js' %}"></script>
+
+<script>
+    // === 关键修复：自检脚本 ===
+    // 如果本地文件没加载成功，Vue对象就不存在，这里会拦截并提示
+    if (typeof Vue === 'undefined' || typeof axios === 'undefined' || typeof echarts === 'undefined') {
+        alert("⚠️ 核心系统组件(Vue/Axios/ECharts) 加载失败！\n\n请检查 static/js 目录下是否存在对应的 .min.js 文件，且文件大小不为0。\n\n如果问题持续，请尝试重新运行下载命令。");
+    }
+
+    new Vue({
+        el: '#dashboard-app',
+        delimiters: ['[[', ']]'],
+        data: {
+            user: null,
+            stats: { users: 0, items: 0, volume: 0 },
+            currentDate: new Date().toLocaleDateString(),
+            categoryChart: null,
+            trendChart: null
+        },
+        mounted() {
+            axios.defaults.baseURL = '/api/';
+            this.fetchUserInfo();
+            this.fetchStats();
+            window.addEventListener('resize', () => {
+                if(this.categoryChart) this.categoryChart.resize();
+                if(this.trendChart) this.trendChart.resize();
+            });
+        },
+        methods: {
+            fetchUserInfo() {
+                axios.get('users/me/').then(res => { this.user = res.data; }).catch(err => {});
+            },
+            fetchStats() {
+                axios.get('system/dashboard/').then(res => {
+                    this.stats = res.data.stats;
+                    this.$nextTick(() => {
+                        if(res.data.charts && res.data.charts.categories) {
+                            this.initCategoryChart(res.data.charts.categories);
+                        }
+                        this.initTrendChart();
+                    });
+                }).catch(err => {
+                    console.error("报表接口异常:", err);
+                });
+            },
+            initCategoryChart(data) {
+                const el = document.getElementById('categoryChart');
+                if (!el) return;
+                this.categoryChart = echarts.init(el);
+                const formattedData = data.map(item => ({ name: item.category__name || '未分类', value: item.count }));
+                this.categoryChart.setOption({
+                    tooltip: { trigger: 'item' },
+                    legend: { bottom: '0%', left: 'center' },
+                    series: [{
+                        name: '分类', type: 'pie', radius: ['40%', '70%'],
+                        itemStyle: { borderRadius: 5, borderColor: '#fff', borderWidth: 2 },
+                        data: formattedData
+                    }]
+                });
+            },
+            initTrendChart() {
+                const el = document.getElementById('trendChart');
+                if (!el) return;
+                this.trendChart = echarts.init(el);
+                this.trendChart.setOption({
+                    tooltip: { trigger: 'axis' },
+                    grid: { top: '10%', bottom: '10%', left: '10%', right: '5%' },
+                    xAxis: { type: 'category', data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'] },
+                    yAxis: { type: 'value' },
+                    series: [{
+                        data: [820, 932, 901, 934, 1290, 1330, 1320],
+                        type: 'bar', barWidth: '40%',
+                        itemStyle: { color: '#3498db' }
+                    }]
+                });
+            }
+        }
+    });
+</script>
+</body>
+</html>
