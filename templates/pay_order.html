@@ -11,15 +11,27 @@
             </div>
             <div class="card-body p-4">
                 <div class="text-center mb-4">
-                    <p class="text-muted mb-1">支付金额</p>
-                    <h1 class="text-danger fw-bold">¥ [[ order.final_price ]]</h1>
-                    <p class="badge bg-light text-dark border">订单号: [[ orderNo ]]</p>
+                    <p class="text-muted mb-1">订单总额</p>
+                    <h3 class="fw-bold">¥ [[ order.final_price ]]</h3>
+
+                    <div class="mt-3 p-3 bg-light rounded">
+                        <div class="d-flex justify-content-between text-secondary small mb-1">
+                            <span>已付保证金</span>
+                            <span>- ¥ [[ order.deposit ]]</span>
+                        </div>
+                        <div class="d-flex justify-content-between fw-bold text-dark border-top pt-2 mt-2">
+                            <span>待支付尾款</span>
+                            <span class="text-danger fs-4">¥ [[ needToPay ]]</span>
+                        </div>
+                    </div>
+
+                    <p class="badge bg-light text-dark border mt-3">订单号: [[ orderNo ]]</p>
                 </div>
 
                 <form @submit.prevent="confirmPay">
                     <div class="mb-3">
                         <label class="form-label">支付密码</label>
-                        <input type="password" class="form-control form-control-lg text-center" 
+                        <input type="password" class="form-control form-control-lg text-center"
                                v-model="password" placeholder="请输入登录密码作为支付验证" required>
                         <div class="form-text text-center">为了毕设演示方便，支付密码 = 登录密码</div>
                     </div>
@@ -27,7 +39,7 @@
                     <div class="d-grid gap-2 mt-4">
                         <button type="submit" class="btn btn-success btn-lg" :disabled="loading">
                             <span v-if="loading" class="spinner-border spinner-border-sm"></span>
-                            <span v-else>确认支付</span>
+                            <span v-else>确认支付 ¥[[ needToPay ]]</span>
                         </button>
                         <a href="/my-orders/" class="btn btn-link text-muted">稍后再付</a>
                     </div>
@@ -45,17 +57,27 @@
         delimiters: ['[[', ']]'],
         data: {
             orderNo: '{{ order_no }}',
-            order: { final_price: '0.00' },
+            order: {
+                final_price: '0.00',
+                deposit: '0.00'
+            },
             password: '',
             loading: false
+        },
+        computed: {
+            // 计算需支付的尾款
+            needToPay() {
+                let final = parseFloat(this.order.final_price) || 0;
+                let deposit = parseFloat(this.order.deposit) || 0;
+                let result = final - deposit;
+                return result > 0 ? result.toFixed(2) : '0.00';
+            }
         },
         mounted() {
             this.fetchOrderInfo();
         },
         methods: {
             fetchOrderInfo() {
-                // 注意：这里加了 /api/ 前缀（因为我们把 base.html 改了，这里要由 app.js 自动处理，
-                // 但为了稳妥，建议用 axios.get('trades/orders/') 配合 app.js 的 defaults）
                 axios.get('trades/orders/').then(res => {
                     let list = res.data.results || res.data;
                     let target = list.find(o => o.order_no === this.orderNo);
@@ -78,21 +100,17 @@
                     this.loading = false;
                     console.error(err);
 
-                    // === 核心修改：智能提取错误信息 ===
                     let msg = "支付失败";
 
                     if (err.response && err.response.data) {
                         let data = err.response.data;
 
-                        // 1. 优先看后端自定义的 "error" 字段
                         if (data.error) {
                             msg = data.error;
                         }
-                        // 2. 其次看 DRF 默认的 "detail" 字段
                         else if (data.detail) {
                             msg = data.detail;
                         }
-                        // 3. 如果是字段校验错误（如密码为空），转成字符串显示
                         else {
                             msg = JSON.stringify(data);
                         }

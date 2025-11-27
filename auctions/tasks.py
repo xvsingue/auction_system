@@ -3,6 +3,10 @@ from django_redis import get_redis_connection
 from .models import AuctionSession
 from django.utils import timezone
 from trades.utils import RedisAuctionHelper
+from trades.models import BidRecord, AuctionOrder
+from django.db import transaction
+import uuid
+from finance.models import Deposit, TransactionRecord
 
 
 @shared_task
@@ -48,15 +52,10 @@ def decrease_auction_price():
         print(f"Session {session.id} price decreased to {new_price}")
 
 
-from trades.models import BidRecord, AuctionOrder
-from django.db import transaction
-import uuid
-
-
 @shared_task
 def check_and_close_auctions():
     """
-    定时任务：检查到期的拍卖场次，进行自动结算
+    定时任务：检查到期的拍卖场次，进行自动结算（生成订单 + 保证金退款）
     """
     now = timezone.now()
 
@@ -75,20 +74,55 @@ def check_and_close_auctions():
             print(f"正在结算场次: {session.name} (ID: {session.id})")
 
             # 2. 查找该场次的获胜者（当前领先的记录）
-            # 增价拍：取最高价；减价拍：通常抢购时已处理，但也可能没人买导致时间到
             winner_bid = BidRecord.objects.filter(session=session, is_leading=True).first()
+            winner_user = winner_bid.buyer if winner_bid else None
+
+            # === 核心新增：处理该场次所有已缴纳的保证金 ===
+            # 查出所有对该拍品交过钱且还是'paid'状态的记录
+            all_deposits = Deposit.objects.filter(auction_item=session.item, status='paid')
+
+            for deposit in all_deposits:
+                if winner_user and deposit.user == winner_user:
+                    # A. 赢家：保证金转为货款
+                    deposit.status = 'transferred'
+                    deposit.save()
+                    print(f"  - 用户 {deposit.user.username} 竞拍成功，保证金转货款")
+                else:
+                    # B. 输家（或流拍）：解冻退款
+                    deposit.status = 'refunded'
+                    deposit.save()
+
+                    # 退回余额
+                    user = deposit.user
+                    user.balance += deposit.amount
+                    user.save()
+
+                    # 记流水
+                    TransactionRecord.objects.create(
+                        user=user,
+                        amount=deposit.amount,
+                        balance_after=user.balance,
+                        trans_type='refund',
+                        remark=f"竞拍结束退回保证金：{session.item.name}"
+                    )
+                    print(f"  - 用户 {deposit.user.username} 竞拍失败，保证金已退回")
+            # ==============================================
 
             if winner_bid:
                 # === 情况 A: 有人出价，成交 ===
 
                 # 生成订单
                 order_no = f"ORD-{uuid.uuid4().hex[:10].upper()}"
+                # 计算关联的保证金金额
+                deposit_val = session.item.start_price * (session.item.deposit_ratio / 100)
+
                 AuctionOrder.objects.create(
                     order_no=order_no,
                     session=session,
                     buyer=winner_bid.buyer,
                     seller=session.item.seller,
                     final_price=winner_bid.bid_price,
+                    deposit=deposit_val,  # 记录这笔订单关联的保证金金额
                     status=0  # 未支付
                 )
 

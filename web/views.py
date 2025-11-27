@@ -1,5 +1,8 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from auctions.models import AuctionSession
+from finance.models import Deposit
+from decimal import Decimal
 
 
 def index(request):
@@ -41,10 +44,35 @@ def auction_list_page(request):
 
 def auction_detail_page(request, pk):
     """
-    拍卖详情页
-    接收 URL 中的 pk 参数，并将其传给模板中的 session_id 变量
+    拍卖详情页 (逻辑升级)
+    pk: 对应 AuctionSession 的 id
     """
-    return render(request, 'auction_detail.html', {'session_id': pk})
+    # 1. 获取场次信息
+    session = get_object_or_404(AuctionSession, pk=pk)
+
+    # 2. 计算需缴纳的保证金金额 = 起拍价 * (保证金比例 / 100)
+    # 注意转为 Decimal 防止精度丢失
+    ratio = session.item.deposit_ratio
+    deposit_amount = session.item.start_price * (ratio / Decimal('100.0'))
+
+    # 3. 检查当前用户是否已缴纳 (仅针对登录用户)
+    has_paid_deposit = False
+    if request.user.is_authenticated:
+        has_paid_deposit = Deposit.objects.filter(
+            user=request.user,
+            auction_item=session.item,
+            status='paid'
+        ).exists()
+
+    # 4. 组装上下文数据传给模板
+    context = {
+        'session_id': pk,
+        'session': session,  # 场次对象
+        'item': session.item,  # 关联的拍品对象
+        'deposit_amount': round(deposit_amount, 2),  # 保证金金额(保留2位小数)
+        'has_paid_deposit': has_paid_deposit  # 核心状态：True/False
+    }
+    return render(request, 'auction_detail.html', context)
 
 
 @login_required(login_url='/login/')
@@ -55,15 +83,18 @@ def dashboard_page(request):
         return redirect('/')
     return render(request, 'dashboard.html')
 
+
 @login_required(login_url='/login/')
 def my_orders_page(request):
     """我的订单页"""
     return render(request, 'my_orders.html')
 
+
 @login_required(login_url='/login/')
 def pay_order_page(request, order_no):
     """支付页"""
     return render(request, 'pay_order.html', {'order_no': order_no})
+
 
 @login_required(login_url='/login/')
 def profile_page(request):

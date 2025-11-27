@@ -70,42 +70,73 @@
 
                         <div v-if="session.status === 1" class="mb-4">
 
-                            <div v-if="session.auction_type === 'increase'">
-                                <label class="form-label fw-bold">出价金额 (最低: ¥[[ minBidPrice ]])</label>
-                                <div class="input-group input-group-lg">
-                                    <span class="input-group-text">¥</span>
-                                    <input type="number" class="form-control fw-bold" v-model="bidPrice"
-                                           :min="minBidPrice">
-                                    <button class="btn btn-danger px-4" @click="placeBid" :disabled="loading">
-                                        <span v-if="loading" class="spinner-border spinner-border-sm"></span>
-                                        <span v-else>立即出价</span>
-                                    </button>
-                                </div>
-                                <div class="form-text mt-2">
-                                    <i class="fas fa-info-circle"></i> 每次加价幅度: ¥[[ session.price_step ]]
-                                </div>
-                            </div>
-
-                            <div v-else>
+                            {% if not request.user.is_authenticated %}
                                 <div class="d-grid">
-                                    <button class="btn btn-danger btn-lg py-3 shadow-sm" @click="placeBid"
-                                            :disabled="loading">
-                                        <i class="fas fa-bolt"></i>
-                                        <span v-if="loading">抢拍中...</span>
-                                        <span v-else>立即以当前价抢拍</span>
+                                    <a href="/login/?next={{ request.path }}" class="btn btn-secondary btn-lg">
+                                        <i class="fas fa-sign-in-alt"></i> 登录后参与竞拍
+                                    </a>
+                                </div>
+
+                            {% else %}
+                                <div v-if="!hasPaidDeposit">
+                                    <div class="alert alert-warning border-warning">
+                                        <div class="d-flex">
+                                            <div class="me-3"><i class="fas fa-exclamation-circle fa-2x text-warning"></i></div>
+                                            <div>
+                                                <h6 class="alert-heading fw-bold">需缴纳保证金</h6>
+                                                <p class="mb-0 small">参与本拍品竞价需冻结保证金：<strong class="text-danger fs-5">¥[[ depositAmount ]]</strong></p>
+                                                <p class="mb-0 text-muted small mt-1">（竞拍结束若未成交，保证金将自动退回账户余额）</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-warning w-100 btn-lg fw-bold shadow-sm text-dark"
+                                            @click="payDeposit" :disabled="loading">
+                                        <span v-if="loading" class="spinner-border spinner-border-sm"></span>
+                                        <span v-else><i class="fas fa-wallet"></i> 立即缴纳保证金</span>
                                     </button>
                                 </div>
-                                <p class="text-center mt-2 text-danger small fw-bold">
-                                    ⚠️ 手慢无！价格随时可能变动或被他人抢走。
-                                </p>
-                            </div>
-                        </div>
 
+                                <div v-else>
+                                    <div class="text-success small mb-2 fw-bold text-center">
+                                        <i class="fas fa-check-circle"></i> 您已缴纳保证金，具备出价资格
+                                    </div>
+
+                                    <div v-if="session.auction_type === 'increase'">
+                                        <label class="form-label fw-bold">出价金额 (最低: ¥[[ minBidPrice ]])</label>
+                                        <div class="input-group input-group-lg">
+                                            <span class="input-group-text">¥</span>
+                                            <input type="number" class="form-control fw-bold" v-model="bidPrice"
+                                                   :min="minBidPrice">
+                                            <button class="btn btn-danger px-4" @click="placeBid" :disabled="loading">
+                                                <span v-if="loading" class="spinner-border spinner-border-sm"></span>
+                                                <span v-else>立即出价</span>
+                                            </button>
+                                        </div>
+                                        <div class="form-text mt-2">
+                                            <i class="fas fa-info-circle"></i> 每次加价幅度: ¥[[ session.price_step ]]
+                                        </div>
+                                    </div>
+
+                                    <div v-else>
+                                        <div class="d-grid">
+                                            <button class="btn btn-danger btn-lg py-3 shadow-sm" @click="placeBid"
+                                                    :disabled="loading">
+                                                <i class="fas fa-bolt"></i>
+                                                <span v-if="loading">抢拍中...</span>
+                                                <span v-else>立即以当前价抢拍</span>
+                                            </button>
+                                        </div>
+                                        <p class="text-center mt-2 text-danger small fw-bold">
+                                            ⚠️ 手慢无！价格随时可能变动或被他人抢走。
+                                        </p>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
                         <div v-else-if="session.status === 0" class="alert alert-warning text-center py-4">
                             <h4><i class="fas fa-hourglass-half"></i> 拍卖尚未开始</h4>
                             <p class="mb-0 fs-5">
-                                <i class="far fa-clock"></i> 开拍时间: <strong>[[ formatDate(session.start_time)
-                                ]]</strong>
+                                <i class="far fa-clock"></i> 开拍时间: <strong>[[ formatDate(session.start_time) ]]</strong>
                             </p>
                             <p class="text-muted small mt-2">敬请期待</p>
                         </div>
@@ -119,14 +150,13 @@
 
                         <div class="row g-2 small text-muted">
                             <div class="col-6">
-                                <span><i
-                                        class="far fa-calendar-alt"></i> 开始: [[ formatDate(session.start_time) ]]</span>
+                                <span><i class="far fa-calendar-alt"></i> 开始: [[ formatDate(session.start_time) ]]</span>
                             </div>
                             <div class="col-6">
                                 <span><i class="far fa-money-bill-alt"></i> 起拍: ¥[[ session.item_detail.start_price ]]</span>
                             </div>
                             <div class="col-6">
-                                <span><i class="fas fa-user-shield"></i> 保证金: ¥[[ calculateDeposit(session.item_detail) ]]</span>
+                                <span><i class="fas fa-user-shield"></i> 保证金: ¥[[ depositAmount ]]</span>
                             </div>
                             <div class="col-6">
                                 <span><i class="fas fa-tag"></i> 分类: [[ session.item_detail.category_name ]]</span>
@@ -186,6 +216,12 @@
             mixins: [commonMixin],
             data: {
                 sessionId: {{ session_id }}, // Django 注入 ID
+
+                // === 新增：保证金状态注入 ===
+                // 使用 Django 模板过滤器 yesno 将 Python bool 转换为 JS bool (true/false)
+                hasPaidDeposit: {{ has_paid_deposit|yesno:"true,false" }},
+                depositAmount: "{{ deposit_amount }}", // 字符串或数字均可
+
                 session: null,
                 bidHistory: [],
                 currentImage: '',
@@ -205,73 +241,77 @@
                 this.fetchDetail();
                 this.fetchHistory();
 
-                // === 核心逻辑：每2秒轮询一次 ===
+                // === 轮询逻辑 ===
                 this.timer = setInterval(() => {
-                    // 只有在页面有数据且拍卖进行中时才刷新
                     if (this.session && this.session.status === 1) {
                         this.refreshData();
                     }
                 }, 2000);
             },
             beforeDestroy() {
-                // 离开页面销毁定时器，防止后台空转
                 clearInterval(this.timer);
             },
             methods: {
-                // 计算保证金显示
-                calculateDeposit(item) {
-                    return (parseFloat(item.start_price) * parseFloat(item.deposit_ratio) / 100).toFixed(2);
-                },
+                // 缴纳保证金
+                payDeposit() {
+                    if(!confirm('确定要缴纳 ¥' + this.depositAmount + ' 保证金吗？\n这将直接从您的账户余额中扣除。')) return;
 
-                // 获取详情 (初次加载)
-                fetchDetail() {
-                    // 注意：这里没有 /api/ 前缀，app.js 会自动加
-                    axios.get('auctions/' + this.sessionId + '/').then(res => {
-                        this.session = res.data;
-                        // 初始化图片显示第一张
-                        if (this.session.item_detail.images.length > 0) {
-                            this.currentImage = this.session.item_detail.images[0];
-                        }
-                        // 初始化出价输入框
-                        this.bidPrice = this.minBidPrice;
+                    this.loading = true;
+                    // 这里的 item_id 对应 finance/views.py 接口要求的参数
+                    // session.item 在 serializer 里是个 ID，直接用即可
+                    axios.post('finance/pay_deposit/', {
+                        item_id: this.session.item
+                    }).then(res => {
+                        alert("🎉 " + res.data.message);
+                        // 支付成功后必须刷新页面，以便 Django 重新计算 has_paid_deposit 状态
+                        window.location.reload();
                     }).catch(err => {
-                        alert("获取场次详情失败，可能场次不存在");
-                        window.location.href = '/auctions/';
+                        this.loading = false;
+                        let msg = "支付失败";
+                        if (err.response && err.response.data && err.response.data.error) {
+                            msg = err.response.data.error;
+                        } else if (err.response && err.response.data && err.response.data.message) {
+                             msg = err.response.data.message;
+                        }
+                        alert("❌ " + msg);
                     });
                 },
 
-                // 获取历史记录
+                fetchDetail() {
+                    axios.get('auctions/' + this.sessionId + '/').then(res => {
+                        this.session = res.data;
+                        if (this.session.item_detail.images.length > 0) {
+                            this.currentImage = this.session.item_detail.images[0];
+                        }
+                        this.bidPrice = this.minBidPrice;
+                    }).catch(err => {
+                        console.error(err);
+                        alert("获取场次详情失败");
+                    });
+                },
+
                 fetchHistory() {
                     axios.get('trades/bids/history/?session_id=' + this.sessionId).then(res => {
                         this.bidHistory = res.data.results || res.data;
                     });
                 },
 
-                // 静默刷新 (轮询用)
                 refreshData() {
                     axios.get('auctions/' + this.sessionId + '/').then(res => {
-                        // 只更新关键变动数据，不重置整个对象，防止图片闪烁
                         this.session.current_price = res.data.current_price;
                         this.session.status = res.data.status;
                         this.session.status_text = res.data.status_text;
-
-                        // 如果发现拍卖结束了，立马停止轮询
-                        if (this.session.status !== 1) {
-                            clearInterval(this.timer);
-                        }
+                        if (this.session.status !== 1) clearInterval(this.timer);
                     });
                     this.fetchHistory();
                 },
 
-                // 核心交互：出价
                 placeBid() {
                     this.loading = true;
-
                     let priceToSubmit = 0;
                     if (this.session.auction_type === 'increase') {
                         priceToSubmit = this.bidPrice;
                     } else {
-                        // 减价拍直接提交当前看到的系统价格
                         priceToSubmit = this.session.current_price;
                     }
 
@@ -282,36 +322,20 @@
 
                     axios.post('trades/bids/place_bid/', payload).then(res => {
                         alert("🎉 " + res.data.message);
-                        this.refreshData(); // 立即刷新界面
-                        this.bidPrice = this.minBidPrice; // 重置输入框到下一个档位
+                        this.refreshData();
+                        this.bidPrice = this.minBidPrice;
                         this.loading = false;
                     }).catch(err => {
                         this.loading = false;
                         let msg = "出价失败";
-
                         if (err.response && err.response.data) {
+                            // 尝试智能解析错误信息
                             let data = err.response.data;
-
-                            // 1. 优先提取 DRF 通用错误 (non_field_errors)
-                            if (data.non_field_errors && Array.isArray(data.non_field_errors)) {
-                                msg = data.non_field_errors[0];
-                            }
-                            // 2. 提取详情错误 (detail)
-                            else if (data.detail) {
-                                msg = data.detail;
-                            }
-                            // 3. 兜底：如果是其他字段错误，尝试提取第一个
+                            if (data.error) msg = data.error;
+                            else if (data.detail) msg = data.detail;
                             else if (typeof data === 'object') {
-                                // 取出第一个 value 的第一条信息
                                 let keys = Object.keys(data);
-                                if (keys.length > 0) {
-                                    let firstError = data[keys[0]];
-                                    msg = Array.isArray(firstError) ? firstError[0] : firstError;
-                                } else {
-                                    msg = JSON.stringify(data);
-                                }
-                            } else {
-                                msg = data;
+                                if (keys.length > 0) msg = data[keys[0]];
                             }
                         }
                         alert("❌ " + msg);

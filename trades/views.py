@@ -2,10 +2,13 @@ from rest_framework import viewsets, permissions, status, mixins
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.db import transaction
+from django.db.models import Q  # 移到顶部导入
 from .models import BidRecord, AuctionOrder
 from .serializers import BidRecordSerializer, BidCreateSerializer, OrderSerializer
 from auctions.models import AuctionSession
+from finance.models import Deposit  # <--- 必须导入 Deposit
 from .utils import RedisAuctionHelper
+from decimal import Decimal
 import uuid
 
 
@@ -22,7 +25,8 @@ class BidViewSet(viewsets.GenericViewSet):
         POST /api/trades/bids/place_bid/
         body: { "session_id": 1, "bid_price": 100.00 }
         """
-        serializer = BidCreateSerializer(data=request.data)
+        # 必须加上 context={'request': request}，否则序列化器里拿不到 request.user
+        serializer = BidCreateSerializer(data=request.data, context={'request': request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -77,6 +81,21 @@ class BidViewSet(viewsets.GenericViewSet):
                     # 1. 生成成交记录
                     BidRecord.objects.create(session=session, buyer=user, bid_price=price, is_leading=True)
 
+                    # === 处理保证金流转 ===
+                    deposit_amount = Decimal('0.00')
+                    # 查找并锁定该用户的保证金记录
+                    deposit_record = Deposit.objects.filter(
+                        user=user,
+                        auction_item=session.item,
+                        status='paid'
+                    ).first()
+
+                    if deposit_record:
+                        deposit_record.status = 'transferred'  # 转为货款
+                        deposit_record.save()
+                        deposit_amount = deposit_record.amount
+                    # ===================
+
                     # 2. 结束场次
                     session.status = 2  # 已结束
                     session.current_price = price
@@ -88,13 +107,14 @@ class BidViewSet(viewsets.GenericViewSet):
                     item.save()
 
                     # 4. 生成订单
-                    order_no = f"{uuid.uuid4().hex[:12].upper()}"
+                    order_no = f"ORD-{uuid.uuid4().hex[:12].upper()}"
                     AuctionOrder.objects.create(
                         order_no=order_no,
                         session=session,
                         buyer=user,
                         seller=session.item.seller,
                         final_price=price,
+                        deposit=deposit_amount,  # 记录保证金，以便支付时抵扣
                         status=0  # 未支付
                     )
 
@@ -126,8 +146,4 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         user = self.request.user
         # 买家看自己买的，卖家看自己卖的
-        return AuctionOrder.objects.filter(models.Q(buyer=user) | models.Q(seller=user))
-
-
-# 需要补充 Django Q 查询
-from django.db import models
+        return AuctionOrder.objects.filter(Q(buyer=user) | Q(seller=user))
