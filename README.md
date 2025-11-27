@@ -52,7 +52,7 @@
         python -m celery -A auction_backend beat -l info
         ```
 
-## 6. 测试账号
+## 6. 测试账号(这里需自行注册账号测试)
 * **管理员 (Admin)**: 
     * 账号: `admin` 
     * 密码: `admin`
