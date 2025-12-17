@@ -28,7 +28,7 @@ INSTALLED_APPS = [
     'django_celery_results',  # 存储 Celery 任务结果
     'django_celery_beat',  # 处理定时任务 (减价拍卖自动降价)
     'django_filters',  # 筛选功能
-
+    'django_extensions',
     # 自定义业务模块 (按依赖顺序排列)
     'users.apps.UsersConfig',  # 用户模块 (包含自定义用户模型)
     'items.apps.ItemsConfig',  # 拍品模块
@@ -79,13 +79,12 @@ WSGI_APPLICATION = 'auction_backend.wsgi.application'
 # ===================================================
 # 数据库配置 (DATABASES)
 # ===================================================
-# 请在 MySQL 中预先创建数据库: CREATE DATABASE auction_db CHARACTER SET utf8mb4;
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'auction_db',  # 数据库名
-        'USER': 'root',  # 你的 MySQL 用户名
-        'PASSWORD': '1234',  # 你的 MySQL 密码 (请修改这里)
+        'USER': 'root',
+        'PASSWORD': '1234',
         'HOST': '127.0.0.1',
         'PORT': '3306',
         'OPTIONS': {
@@ -117,7 +116,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'zh-hans'  # 使用中文
 TIME_ZONE = 'Asia/Shanghai'  # 中国时区
 USE_I18N = True
-USE_TZ = False  # 毕设建议关闭时区感知，直接存本地时间，避免数据库存UTC时间导致的前端换算麻烦
+USE_TZ = False
 
 # ===================================================
 # 静态文件与媒体文件
@@ -185,7 +184,7 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 5.0,
     },
 
-    # 2. === 新增：自动结算到期场次 (每 10 秒检查一次，方便演示) ===
+    # 自动结算到期场次 (每 10 秒检查一次，方便演示)
     # 实际生产环境通常设为 1 分钟 (crontab(minute='*'))
     'close-expired-auctions': {
         'task': 'auctions.tasks.check_and_close_auctions',
