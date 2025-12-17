@@ -6,7 +6,6 @@ from auctions.models import AuctionSession
 class BidRecord(models.Model):
     """
     竞拍记录表 (bid_record)
-    对应毕设文档 4.1.4
     """
     session = models.ForeignKey(AuctionSession, on_delete=models.CASCADE, related_name='bids', verbose_name="所属场次")
     buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="竞买人")

@@ -6,7 +6,6 @@ class UserProfile(AbstractUser):
     """
     用户表 (user_profile)
     继承 Django 原生 AbstractUser，扩展角色、信用分、余额等字段
-    对应毕设文档 4.1.1 章节
     """
     # 角色枚举
     ROLE_CHOICES = (
@@ -26,7 +25,7 @@ class UserProfile(AbstractUser):
     # 资金字段
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name='账户余额')
 
-    # 冗余字段（虽然 AbstractUser 有 date_joined，但为了符合毕设文档要求，显式定义 create_time）
+    # 冗余字段（显式定义 create_time）
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
 
     class Meta:

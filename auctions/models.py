@@ -5,7 +5,6 @@ from items.models import AuctionItem
 class AuctionSession(models.Model):
     """
     拍卖场次表 (auction_session)
-    对应毕设文档 4.1.3 章节
     """
     TYPE_CHOICES = (
         ('increase', '增价拍卖'),
