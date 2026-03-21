@@ -2,6 +2,8 @@
 
 <img width="2416" height="1777" alt="QQ_1774117260472" src="https://github.com/user-attachments/assets/314cc6a0-7be8-48f7-b764-8f51e7181bdd" />
 
+<img width="2426" height="2166" alt="QQ_1774117412742" src="https://github.com/user-attachments/assets/432c9ec2-bdf2-459f-9490-287329f1cffb" />
+
 
 ## 1. 项目简介
 本项目是一个前后端混合开发的在线拍卖平台，支持增价拍卖与减价拍卖两种模式。系统集成了实时竞价、自动结算、资金管理及可视化数据大屏等功能，旨在模拟真实的在线拍卖全流程。
