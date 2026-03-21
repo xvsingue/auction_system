@@ -39,6 +39,13 @@ class AuctionSessionAdmin(admin.ModelAdmin):
         if obj.bottom_price is None:
             obj.bottom_price = first_item.reserve_price
 
+        # 强制同步卖家的拍卖规则设置
+        obj.auction_type = first_item.auction_type
+        obj.price_step = first_item.price_step
+        obj.reduce_interval = first_item.reduce_interval
+        if first_item.auction_type == 'decrease':
+            obj.bottom_price = first_item.bottom_price or first_item.reserve_price
+            
         # 保存这第一条记录
         super().save_model(request, obj, form, change)
 
@@ -61,11 +68,11 @@ class AuctionSessionAdmin(admin.ModelAdmin):
                     item=item,
                     start_time=obj.start_time,
                     end_time=obj.end_time,
-                    auction_type=obj.auction_type,
-                    price_step=obj.price_step,
-                    reduce_interval=obj.reduce_interval,
+                    auction_type=item.auction_type,
+                    price_step=item.price_step,
+                    reduce_interval=item.reduce_interval,
 
-                    bottom_price=this_bottom_price,  # <--- 使用智能判定的底价
+                    bottom_price=item.bottom_price if item.auction_type == 'decrease' else this_bottom_price,
 
                     status=obj.status,
                     current_price=item.start_price  # 使用拍品各自的起拍价

@@ -25,3 +25,8 @@ class AuctionSessionForm(forms.ModelForm):
         # 如果是修改页面，回显当前关联的那个拍品
         if self.instance and self.instance.pk:
             self.fields['items'].initial = [self.instance.item]
+            
+        # 拍卖规则字段由商品本身决定，管理员无需必填
+        for field in ['auction_type', 'price_step', 'reduce_interval', 'bottom_price']:
+            if field in self.fields:
+                self.fields[field].required = False

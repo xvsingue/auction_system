@@ -42,6 +42,53 @@
                             </div>
                         </div>
 
+                        <!-- 拍卖类型选择 -->
+                        <div class="mb-3">
+                            <label class="form-label d-block">拍卖规则</label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" v-model="form.auction_type" value="increase" id="typeIncrease">
+                                <label class="form-check-label" for="typeIncrease">增价拍卖 <span class="badge bg-primary">推荐</span></label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" v-model="form.auction_type" value="decrease" id="typeDecrease">
+                                <label class="form-check-label" for="typeDecrease">减价拍卖</label>
+                            </div>
+                        </div>
+
+                        <!-- 加/降价幅度 -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">[[ form.auction_type === 'increase' ? '每次加价幅度 (¥)' : '每次降价幅度 (¥)' ]]</label>
+                                <input type="number" step="0.01" class="form-control" v-model="form.price_step" required>
+                            </div>
+                        </div>
+
+                        <!-- 减价拍特有字段 -->
+                        <div class="row mb-3" v-if="form.auction_type === 'decrease'">
+                            <div class="col-md-6">
+                                <label class="form-label">降价间隔 (秒)</label>
+                                <input type="number" step="1" class="form-control" v-model="form.reduce_interval" placeholder="例如: 60">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">底价 (¥)</label>
+                                <input type="number" step="0.01" class="form-control" v-model="form.bottom_price" placeholder="例如: 100">
+                            </div>
+                        </div>
+
+                        <!-- 期望排期 -->
+                        <div class="row mb-4 bg-light p-3 rounded border">
+                            <h5 class="mb-3 text-primary"><i class="fas fa-calendar-alt"></i> 期望排期预设</h5>
+                            <div class="col-md-6">
+                                <label class="form-label">期望开拍时间 <span class="text-danger">*</span></label>
+                                <input type="datetime-local" class="form-control" v-model="form.expected_start_time" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">期望截拍时间 <span class="text-danger">*</span></label>
+                                <input type="datetime-local" class="form-control" v-model="form.expected_end_time" required>
+                                <small class="text-muted">管理员审核通过后将完全根据此时间自动安排专场</small>
+                            </div>
+                        </div>
+
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">保证金比例 (%)</label>
@@ -55,6 +102,11 @@
                                        readonly>
                                 <div class="form-text">默认 10%</div>
                             </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">拍品描述</label>
+                            <textarea class="form-control" v-model="form.description" rows="3" placeholder="请输入拍品的详细描述（如残次、年份等，选填）"></textarea>
                         </div>
 
                         <div class="mb-4">
@@ -91,8 +143,15 @@
                     category: '',
                     start_price: '',
                     reserve_price: '',
+                    description: '',
                     deposit_ratio: 20,
-                    earnest_money_ratio: 10
+                    earnest_money_ratio: 10,
+                    auction_type: 'increase',
+                    price_step: '',
+                    reduce_interval: '',
+                    bottom_price: '',
+                    expected_start_time: '',
+                    expected_end_time: ''
                 },
                 fileList: [],
                 loading: false

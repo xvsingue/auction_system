@@ -25,7 +25,9 @@ class AuctionItemSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'category', 'category_name', 'seller', 'seller_name',
             'start_price', 'reserve_price', 'deposit_ratio', 'earnest_money_ratio',
-            'images', 'status', 'reject_reason', 'create_time'
+            'images', 'description', 'status', 'reject_reason', 'create_time',
+            'auction_type', 'price_step', 'reduce_interval', 'bottom_price',
+            'expected_start_time', 'expected_end_time'
         ]
         read_only_fields = ['seller', 'status', 'reject_reason', 'create_time']
 
@@ -46,9 +48,32 @@ class ItemCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = AuctionItem
         fields = [
-            'name', 'category', 'start_price', 'reserve_price',
-            'deposit_ratio', 'earnest_money_ratio', 'upload_images'
+            'name', 'category', 'start_price', 'reserve_price', 'description',
+            'deposit_ratio', 'earnest_money_ratio', 'upload_images',
+            'auction_type', 'price_step', 'reduce_interval', 'bottom_price',
+            'expected_start_time', 'expected_end_time'
         ]
+
+    def validate(self, data):
+        # 时间逻辑校验
+        st = data.get('expected_start_time')
+        et = data.get('expected_end_time')
+        if st and et and st >= et:
+            raise serializers.ValidationError({"expected_end_time": "结束时间必须晚于开拍时间。"})
+        # 减价拍卖规则校验
+        if data.get('auction_type') == 'decrease':
+            if not data.get('reduce_interval') or data.get('reduce_interval') <= 0:
+                raise serializers.ValidationError({"reduce_interval": "减价拍卖必须设置有效的降价间隔(>0)。"})
+            if not data.get('bottom_price') and data.get('bottom_price') != 0:
+                raise serializers.ValidationError({"bottom_price": "减价拍卖必须设置底价。"})
+            if data.get('bottom_price') >= data.get('start_price'):
+                raise serializers.ValidationError({"bottom_price": "底价必须低于起拍价。"})
+        
+        # 必须提供有效的 price_step
+        if data.get('price_step') is None or data.get('price_step') <= 0:
+            raise serializers.ValidationError({"price_step": "必须设置有效的加/降价幅度(>0)。"})
+            
+        return data
 
     def create(self, validated_data):
         images = validated_data.pop('upload_images')

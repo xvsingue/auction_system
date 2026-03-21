@@ -8,6 +8,34 @@ from django.db import transaction
 import uuid
 from finance.models import Deposit, TransactionRecord
 
+@shared_task
+def check_and_start_auctions():
+    """
+    定时任务：检查到点开拍的场次，自动将状态从未开始(0)切换为进行中(1)
+    建议每 5-10 秒运行一次
+    """
+    now = timezone.now()
+    pending_sessions = AuctionSession.objects.filter(
+        status=0,
+        start_time__lte=now
+    )
+    
+    count = pending_sessions.count()
+    if count > 0:
+        # 获取关联的拍品 IDs
+        item_ids = list(pending_sessions.values_list('item_id', flat=True))
+        
+        # 批量更新场次状态为 1(进行中)
+        pending_sessions.update(status=1)
+        
+        # 同步更新其所属的拍品状态为 2(竞拍中)
+        from items.models import AuctionItem
+        AuctionItem.objects.filter(id__in=item_ids, status=1).update(status=2)
+        
+        print(f"触发系统时钟：已成功将 {count} 个已到时间的拍卖场次状态切换为'进行中'！")
+        
+    return f"Started {count} pending sessions."
+
 
 @shared_task
 def decrease_auction_price():

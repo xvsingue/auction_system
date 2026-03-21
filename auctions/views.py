@@ -15,7 +15,8 @@ class AuctionSessionViewSet(viewsets.ModelViewSet):
     """
     拍卖场次接口
     """
-    queryset = AuctionSession.objects.all()
+    queryset = AuctionSession.objects.all().order_by('-start_time')
+    pagination_class = None  # 取消分页，让前端本地过滤可以囊括所有数据
     permission_classes = [IsAdminOrReadOnly]
 
     # 筛选与搜索

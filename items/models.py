@@ -20,6 +20,11 @@ class AuctionItem(models.Model):
     """
     拍品表 (auction_item)
     """
+    TYPE_CHOICES = (
+        ('increase', '增价拍卖'),
+        ('decrease', '减价拍卖'),
+    )
+
     STATUS_CHOICES = (
         (0, '待审核'),
         (1, '待开拍'),  # 审核通过后，关联场次前或关联后未开始
@@ -41,10 +46,26 @@ class AuctionItem(models.Model):
     deposit_ratio = models.DecimalField(max_digits=5, decimal_places=2, default=20.00, verbose_name="保证金比例(%)")
     earnest_money_ratio = models.DecimalField(max_digits=5, decimal_places=2, default=10.00, verbose_name="定金比例(%)")
 
+    # 拍卖规则设置
+    auction_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='increase', verbose_name="拍卖类型")
+    price_step = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="加/降价幅度",
+                                     help_text="增价为最小加价，减价为每次降价")
+    reduce_interval = models.IntegerField(default=0, blank=True, null=True, verbose_name="降价间隔(秒)",
+                                          help_text="仅减价拍卖有效")
+    bottom_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, verbose_name="底价",
+                                       help_text="仅减价拍卖有效")
+
+    # 期望排期（卖家设定）
+    expected_start_time = models.DateTimeField(verbose_name="期望开拍时间", blank=True, null=True, help_text="由卖家发布时指定")
+    expected_end_time = models.DateTimeField(verbose_name="期望结束时间", blank=True, null=True, help_text="由卖家发布时指定")
+
     # 图片路径存储 (逗号分隔的字符串)
     image_paths = models.TextField(verbose_name="图片路径", help_text="存储多张图片路径，用逗号分隔")
 
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=0, verbose_name="状态")
+
+    # 拍品描述
+    description = models.TextField(verbose_name="拍品描述", blank=True, null=True, help_text="卖家对拍品的详细文字描述（如瑕疵、年份等）")
 
     # 审核相关
     reject_reason = models.CharField(max_length=255, blank=True, null=True, verbose_name="驳回原因")

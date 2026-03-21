@@ -55,6 +55,13 @@
                     <div class="card-body">
                         <h3 class="card-title fw-bold mb-3">[[ session.item_detail.name ]]</h3>
 
+                        <!-- 拍品描述展示 -->
+                        <div v-if="session.item_detail.description" class="mb-3">
+                            <div class="p-3 bg-light rounded text-muted" style="white-space: pre-wrap; font-size: 0.95rem;">
+                                [[ session.item_detail.description ]]
+                            </div>
+                        </div>
+
                         <div class="alert text-center py-4 mb-4"
                              :class="session.status===1 ? 'alert-primary' : 'alert-secondary'">
                             <small class="text-uppercase mb-1 d-block">当前价格</small>
@@ -153,7 +160,16 @@
                                 <span><i class="far fa-calendar-alt"></i> 开始: [[ formatDate(session.start_time) ]]</span>
                             </div>
                             <div class="col-6">
+                                <span><i class="far fa-calendar-check"></i> 截拍: [[ formatDate(session.end_time) ]]</span>
+                            </div>
+                            <div class="col-6">
                                 <span><i class="far fa-money-bill-alt"></i> 起拍: ¥[[ session.item_detail.start_price ]]</span>
+                            </div>
+                            <div class="col-6">
+                                <span><i class="fas fa-gavel"></i>
+                                    <span v-if="session.auction_type === 'decrease'">降幅: ¥[[ session.price_step ]]</span>
+                                    <span v-else>加幅: ¥[[ session.price_step ]]</span>
+                                </span>
                             </div>
                             <div class="col-6">
                                 <span><i class="fas fa-user-shield"></i> 保证金: ¥[[ depositAmount ]]</span>

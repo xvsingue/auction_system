@@ -178,14 +178,19 @@ from celery.schedules import crontab
 # auction_backend/settings.py
 
 CELERY_BEAT_SCHEDULE = {
-    # 1. 原有的减价拍自动降价 (每5秒)
+    # 1. 自动检测并流转到期开拍的场次 (每5秒检查一次)
+    'start-pending-auctions': {
+        'task': 'auctions.tasks.check_and_start_auctions',
+        'schedule': 5.0,
+    },
+
+    # 2. 原有的减价拍自动降价 (每5秒)
     'decrease-price-every-5-seconds': {
         'task': 'auctions.tasks.decrease_auction_price',
         'schedule': 5.0,
     },
 
-    # 自动结算到期场次 (每 10 秒检查一次，方便演示)
-    # 实际生产环境通常设为 1 分钟 (crontab(minute='*'))
+    # 3. 自动结算到期场次 (每 10 秒检查一次，方便演示)
     'close-expired-auctions': {
         'task': 'auctions.tasks.check_and_close_auctions',
         'schedule': 10.0,
