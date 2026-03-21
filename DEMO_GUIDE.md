@@ -3,7 +3,7 @@
 ## ⚠️ 准备工作 (答辩前 5 分钟必做)
 
 1.  **启动 Redis 服务**: 确保终端输入 `redis-cli ping` 返回 `PONG`。
-2.  **开启三个终端窗口** (确保都在 `venv` 环境下):
+2.  **开启三个终端窗口** (确保都在 `venv` 环境下):(cd /Users/apple/auction_system   source venv/bin/activate)
     * **窗口 1 (Django)**: `python manage.py runserver`
     * **窗口 2 (Worker)**: `celery -A auction_backend worker -l info  或者 python -m celery -A auction_backend worker -l info`
     * **窗口 3 (Beat)**: `python -m celery -A auction_backend beat -l info`

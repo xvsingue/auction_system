@@ -1,12 +1,12 @@
+from django.db.models import Q
 from rest_framework import viewsets, permissions, status, mixins
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.db import transaction
-from django.db.models import Q  # 移到顶部导入
 from .models import BidRecord, AuctionOrder
 from .serializers import BidRecordSerializer, BidCreateSerializer, OrderSerializer
 from auctions.models import AuctionSession
-from finance.models import Deposit  # <--- 必须导入 Deposit
+from finance.models import Deposit
 from .utils import RedisAuctionHelper
 from decimal import Decimal
 import uuid

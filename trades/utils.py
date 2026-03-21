@@ -24,7 +24,7 @@ class RedisAuctionHelper:
         self.conn.set(self.price_key, str(price))
 
     def acquire_lock(self, timeout=5):
-        """获取分布式锁 (简单版)"""
+        """获取分布式锁"""
         # 使用 setnx 实现锁，防止减价拍卖多人同时抢到一个商品
         identifier = str(time.time())
         if self.conn.set(self.lock_key, identifier, ex=timeout, nx=True):

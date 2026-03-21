@@ -24,4 +24,4 @@ env/
 
 # Celery (定时任务生成的临时文件)
 celerybeat-schedule
-celerybeat.pid
+celerybeat.pidcelerybeat-schedule*
