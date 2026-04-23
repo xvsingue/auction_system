@@ -1,4 +1,4 @@
-## ⚠️ 准备工作 (答辩前 5 分钟必做)
+## ⚠️ 准备工作
 
 1.  **启动 Redis 服务**: 确保终端输入 `redis-cli ping` 返回 `PONG`。
 2.  **开启三个终端窗口** (确保都在 `venv` 环境下):(cd /Users/apple/auction_system   source venv/bin/activate)
