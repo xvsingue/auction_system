@@ -1,5 +1,3 @@
-# 🎓 毕业答辩演示操作手册
-
 ## ⚠️ 准备工作 (答辩前 5 分钟必做)
 
 1.  **启动 Redis 服务**: 确保终端输入 `redis-cli ping` 返回 `PONG`。
@@ -7,7 +5,7 @@
     * **窗口 1 (Django)**: `python manage.py runserver`
     * **窗口 2 (Worker)**: `celery -A auction_backend worker -l info  或者 python -m celery -A auction_backend worker -l info`
     * **窗口 3 (Beat)**: `python -m celery -A auction_backend beat -l info`
-3.  **清空/重置数据 (可选)**: 如果之前的测试数据太乱，建议去后台把过期的拍卖场次删掉，或者新建几个全新的。
+3.  **清空/重置数据 (可选)**
 
 ---
 
